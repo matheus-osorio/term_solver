@@ -1,0 +1,272 @@
+<html>
+  <head>
+    <script type="text/javascript" src="/eel.js"></script>
+    <title>Term Solver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Secular+One&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.0/dist/echarts.min.js"></script>
+  </head>
+  <body>
+    <div id="app" onkeydown="type_letter">
+      <div id="term" onkeydown="type_letter">
+        <div class="line">
+          <div class="space"></div>
+          <div onclick="change_color(0,0)" id="matrix-0-0"class="block"></div>
+          <div onclick="change_color(0,1)" id="matrix-0-1"class="block"></div>
+          <div onclick="change_color(0,2)" id="matrix-0-2" class="block"></div>
+          <div onclick="change_color(0,3)" id="matrix-0-3" class="block"></div>
+          <div onclick="change_color(0,4)" id="matrix-0-4" class="block"></div>
+        </div>
+        <div class="line">
+          <div class="space"></div>
+          <div onclick="change_color(1,0)" id="matrix-1-0"class="block"></div>
+          <div onclick="change_color(1,1)" id="matrix-1-1"class="block"></div>
+          <div onclick="change_color(1,2)" id="matrix-1-2" class="block"></div>
+          <div onclick="change_color(1,3)" id="matrix-1-3" class="block"></div>
+          <div onclick="change_color(1,4)" id="matrix-1-4" class="block"></div>
+        </div>
+        <div class="line">
+          <div class="space"></div>
+          <div onclick="change_color(2,0)" id="matrix-2-0"class="block"></div>
+          <div onclick="change_color(2,1)" id="matrix-2-1"class="block"></div>
+          <div onclick="change_color(2,2)" id="matrix-2-2" class="block"></div>
+          <div onclick="change_color(2,3)" id="matrix-2-3" class="block"></div>
+          <div onclick="change_color(2,4)" id="matrix-2-4" class="block"></div>
+        </div>
+        <div class="line">
+          <div class="space"></div>
+          <div onclick="change_color(3,0)" id="matrix-3-0"class="block"></div>
+          <div onclick="change_color(3,1)" id="matrix-3-1"class="block"></div>
+          <div onclick="change_color(3,2)" id="matrix-3-2" class="block"></div>
+          <div onclick="change_color(3,3)" id="matrix-3-3" class="block"></div>
+          <div onclick="change_color(3,4)" id="matrix-3-4" class="block"></div>
+        </div>
+        <div class="line">
+          <div class="space"></div>
+          <div onclick="change_color(4,0)" id="matrix-4-0"class="block"></div>
+          <div onclick="change_color(4,1)" id="matrix-4-1"class="block"></div>
+          <div onclick="change_color(4,2)" id="matrix-4-2" class="block"></div>
+          <div onclick="change_color(4,3)" id="matrix-4-3" class="block"></div>
+          <div onclick="change_color(4,4)" id="matrix-4-4" class="block"></div>
+        </div>
+        <div class="line">
+          <div class="space"></div>
+          <div onclick="change_color(5,0)" id="matrix-5-0"class="block"></div>
+          <div onclick="change_color(5,1)" id="matrix-5-1"class="block"></div>
+          <div onclick="change_color(5,2)" id="matrix-5-2" class="block"></div>
+          <div onclick="change_color(5,3)" id="matrix-5-3" class="block"></div>
+          <div onclick="change_color(5,4)" id="matrix-5-4" class="block"></div>
+        </div>
+      </div>
+      <div id="graph" style="width: 55%;height:500px;"></div>
+      <div id="scroller">
+
+      </div>
+    </div>
+    </div>
+  </body>
+
+</html>
+<script type="text/javascript">
+  let line = 0
+  let char = 0
+  let types = [0,0,0,0,0]
+  document.addEventListener('keydown', (event) => {
+    const keyName = event.key;
+    if(keyName === 'Enter') {
+      callback([filter_words, get_best_words, make_graph])({line})
+      char = 0
+      line += 1
+      return
+    }
+
+    if(keyName.toLowerCase() === 'backspace') {
+      const id = `#matrix-${line}-${char}`
+      const box = document.querySelector(id)
+      box.innerHTML = ''
+      char-=1
+      return
+    }
+    const id = `#matrix-${line}-${char}`
+    const box = document.querySelector(id)
+    box.innerHTML = keyName.toUpperCase()
+    char += 1
+  });
+
+  function change_color(line_box, column_box) {
+    const id = `#matrix-${line_box}-${column_box}`
+    types[column_box] = (types[column_box] + 1) % 3
+    schema = {
+      '0': 'white',
+      '1': '#d3ad69',
+      '2': '#3aa394'
+    }
+
+    const box = document.querySelector(id)
+    box.style.backgroundColor = schema[types[column_box]]
+  }
+
+  async function filter_words({line}, next){
+    let word = ''
+    for(let i = 0; i < 5; i++) {
+      const id = `#matrix-${line}-${i}`
+      const node = document.querySelector(id)
+      word += node.innerHTML
+    }
+
+    await eel.filter_words(word.toLowerCase(), types.join(''))()
+    types = [0,0,0,0,0]
+    next({})
+  }
+
+  function callback(func_list) {
+    const next = (n, values = {}) => {
+      n < func_list.length && func_list[n](values, (v) => next(n+1, v))
+    }
+    return (v = {}) => next(0, v)
+  }
+
+  async function get_best_words(values, next) {
+    const words = await eel.get_best_words()()
+    console.log(words)
+    const scroller = document.querySelector('#scroller')
+    scroller.innerHTML = ''
+    for(const word of words) {
+      const line = document.createElement('div')
+      line.classList.add('word')
+      line.onclick = () => make_graph({make_graph: word.word}, () => true)
+      line.innerHTML = `<h2 class="word-title">${word.word}</h2><div class="points">Gen: ${word.letter_points} Spc: ${word.place_points}</div>`
+      scroller.appendChild(line)
+    }
+
+    values.make_graph = words[0].word
+    next(values)
+  }
+
+  async function make_graph(values, next) {
+    const graph = await eel.get_word_spectrum(values.make_graph)()
+
+    const myChart = echarts.init(document.getElementById('graph'));
+    
+    // Specify the configuration items and data for the chart
+    let option = {
+      title: {
+        text: 'Word Similarity: ' + values.make_graph
+      },
+      tooltip: {
+        trigger: 'axis'
+      },
+      legend: {
+        data: ['data']
+      },
+      xAxis: {
+        data: graph.names.map((name) => {
+          const replacements = {
+            '0':'⬛',
+            '1': '🟨',
+            '2': '🟩',
+          }
+
+          return name.split('').map((n) => replacements[n]).join('')
+        })
+      },
+      yAxis: {},
+      series: [
+        {
+          name: 'data',
+          type: 'bar',
+          data: graph.values
+        }
+      ]
+    };
+
+    // Display the chart using the configuration items and data just specified.
+    myChart.setOption(option);
+
+    next(values)
+  }
+
+  async function type_letter(letter) {
+    console.log(letter)
+  }
+
+  call_list = callback([get_best_words, make_graph])
+  call_list()
+
+  // Initialize the echarts instance based on the prepared dom
+  
+</script>
+
+<style>
+    body {
+      margin: 0px;
+    }
+    #app {
+      display: grid;
+      grid-template-columns: 3fr 2fr 1fr;
+      height: 100vh;
+      width: 100vw;
+      background-color: white;
+      
+    }
+
+    #term {
+      display: grid;
+      grid-template-rows: repeat(6, 100px);
+      row-gap: 20px;
+      height: 60%;
+      width: 100%;
+      margin: 50px 0px;
+      background-color: white;
+    }
+
+    .line {
+      display: grid;
+      grid-template-columns: 1fr repeat(5, 100px) 1fr;
+      column-gap: 20px;
+    }
+
+    .block {
+      cursor: pointer;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: solid 5px;
+      border-radius: 10px;
+      font-size: 50px;
+      font-family: 'Secular One';
+    }
+
+    #graph {
+      width: 1000px  !important;
+      height: 400px;
+    }
+
+    #scroller {
+      display: grid;
+      grid-template-columns: 1fr;
+      row-gap: 10px;
+      overflow: auto;
+    }
+
+    .word {
+      cursor: pointer;
+      height: 10vh;
+      width: 100%;
+      box-shadow: 0 10px 0px 0 rgb(0 0 0 / 20%), 0 6px 20px 0 rgb(0 0 0 / 19%) !important;
+      
+    }
+
+    .word-title {
+      font-family: 'Secular One';
+    }
+
+    ::-webkit-scrollbar {
+    display: none;
+}
+
+
+</style>
